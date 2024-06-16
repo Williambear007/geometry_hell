@@ -2,6 +2,7 @@ import pygame
 import time
 import random
 from pygame import mixer
+import asyncio
 
 mixer.init()
 pygame.font.init()
@@ -14,13 +15,13 @@ LEVEL_3_MUSIC = "level3_music.mp3"
 LEVEL_4_MUSIC = "level4_music.mp3"
 
 # Load and play main menu music
-def play_menu_music():
+async def play_menu_music():
     mixer.music.load(MENU_MUSIC)
     mixer.music.set_volume(0.7)
     mixer.music.play(-1)  # Loop the music
 
 # Load and play game music
-def play_game_music(music_file):
+async def play_game_music(music_file):
     mixer.music.load(music_file)
     mixer.music.set_volume(0.7)
     mixer.music.play(-1)  # Loop the music
@@ -42,8 +43,7 @@ STAR_VEL = 3
 
 FONT = pygame.font.SysFont("pusab", 50)  # comicsans
 
-
-def draw(player_rect, elapsed_time, stars, attempts):
+async def draw(player_rect, elapsed_time, stars, attempts):
     WIN.blit(BG, (0, 0))
 
     time_text = FONT.render(f"Time: {round(elapsed_time)}s", 1, "white")
@@ -59,9 +59,8 @@ def draw(player_rect, elapsed_time, stars, attempts):
 
     pygame.display.update()
 
-
-def game_loop(attempts, level_time, music_file):
-    play_game_music(music_file)  # Start game music
+async def game_loop(attempts, level_time, music_file):
+    await play_game_music(music_file)  # Start game music
 
     player_rect = pygame.Rect(400, HEIGHT - PLAYER_HEIGHT, PLAYER_WIDTH, PLAYER_HEIGHT)
 
@@ -117,24 +116,23 @@ def game_loop(attempts, level_time, music_file):
             lost_text = FONT.render("You Lost!", 1, "white")
             WIN.blit(lost_text, (WIDTH / 2 - lost_text.get_width() / 2, HEIGHT / 2 - lost_text.get_height() / 2))
             pygame.display.update()
-            pygame.time.delay(2000)  # Shorter delay before restart
+            await asyncio.sleep(2)  # Shorter delay before restart
             return True, attempts + 1
 
-        draw(player_rect, elapsed_time, stars, attempts)
+        await draw(player_rect, elapsed_time, stars, attempts)
 
         if elapsed_time >= level_time:  # Check if the player has survived for the level time
             mixer.music.stop()
             end_text = FONT.render("You Win!", 1, "white")
             WIN.blit(end_text, (WIDTH / 2 - end_text.get_width() / 2, HEIGHT / 2 - end_text.get_height() / 2))
             pygame.display.update()
-            pygame.time.delay(5000)  # Display the end screen for 5 seconds
+            await asyncio.sleep(5)  # Display the end screen for 5 seconds
             return 2, attempts
 
     return False, attempts
 
-
-def main_menu():
-    play_menu_music()  # Start main menu music
+async def main_menu():
+    await play_menu_music()  # Start main menu music
 
     run = True
     while run:
@@ -171,26 +169,25 @@ def main_menu():
                 if event.key == pygame.K_4:
                     return 40, LEVEL_4_MUSIC
 
-def main():
-    level_time, music_file = main_menu()
+async def main():
+    level_time, music_file = await main_menu()
     if level_time is None:
         return
 
     attempts = 0
     running = True
     while running:
-        game_over, attempts = game_loop(attempts, level_time, music_file)
+        game_over, attempts = await game_loop(attempts, level_time, music_file)
         if game_over == -1 or game_over == 2:  # Added condition to check if the player won
-            level_time, music_file = main_menu()
+            level_time, music_file = await main_menu()
             if level_time is None:
                 return
         elif game_over:
-            play_game_music(music_file)  # Restart the game music when the game restarts
+            await play_game_music(music_file)  # Restart the game music when the game restarts
         if not game_over:
             running = False
 
     pygame.quit()
 
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
